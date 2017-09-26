@@ -14,31 +14,25 @@
         - start nginx
     - name: create directories for ssl certificates
       file: path=/etc/nginx/ssl state=directory
-	- name: copy TLS key
-	  copy: src=files/nginx.key dest={{ key_file }} owner=root mode=0600
-      notify: restart nginx
+    - name: copy TLS key
+      copy: src=files/nginx.key dest={{ key_file }} owner=root mode=0600
+      notify: 
+        - start nginx
     - name: copy TLS certificate
       copy: src=files/nginx.crt dest={{ cert_file }}
       notify: restart nginx
-	- name: copy nginx config file
+    - name: copy nginx config file
       template: src=templates/nginx.conf.j2 dest={{ conf_file }}
-      notify: restart nginx
-	- name: enable configuration
+      notify:
+        - start nginx
+    - name: enable configuration
       file: dest=/etc/nginx/sites-enabled/default src={{ conf_file }} state=link
-      notify: restart nginx
-    - name: Upload default index.php for host
-      copy: src=static_files/index.php dest=/usr/share/nginx/www/ mode=0644
-      register: php
-      ignore_errors: True
-
-    - name: Remove index.html for host
-      command: rm /usr/share/nginx/www/index.html
-      when: php|success
-
+      notify:
+        - start nginx
     - name: Upload default index.html for host
-      copy: src=static_files/index.html dest=/usr/share/nginx/www/ mode=0644
-      when: php|failed
-
+      copy: src=static_files/index.html dest=/usr/share/nginx/html/ mode=0644
+      notify:
+        - start nginx
   handlers:
-    - name: start Nginx
+    - name: start nginx
       service: name=nginx state=started
