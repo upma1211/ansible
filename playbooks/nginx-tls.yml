@@ -1,38 +1,38 @@
 ---
-- name: Install nginx with tls
+- name: ABC
   hosts: nodes
   become: yes
   vars:
-  key_file: /etc/nginx/ssl/nginx.key
-  cert_file: /etc/nginx/ssl/nginx.crt
-  conf_file: /etc/nginx/sites-available/default
-  server_name: localhost
+    key_file: /etc/nginx/ssl/nginx.key
+    cert_file: /etc/nginx/ssl/nginx.crt
+    conf_file: /etc/nginx/sites-available/default
+    server_name: localhost
   tasks:
     - name: Install Nginx web server
       apt: pkg=nginx state=latest update_cache=true
       notify:
-        - start nginx
+      - start nginx
     - name: create directories for ssl certificates
       file: path=/etc/nginx/ssl state=directory
     - name: copy TLS key
       copy: src=files/nginx.key dest={{ key_file }} owner=root mode=0600
       notify: 
-        - start nginx
+      - start nginx
     - name: copy TLS certificate
       copy: src=files/nginx.crt dest={{ cert_file }}
       notify: restart nginx
     - name: copy nginx config file
       template: src=templates/nginx.conf.j2 dest={{ conf_file }}
       notify:
-        - start nginx
+      - start nginx
     - name: enable configuration
       file: dest=/etc/nginx/sites-enabled/default src={{ conf_file }} state=link
       notify:
-        - start nginx
+      - start nginx
     - name: Upload default index.html for host
       copy: src=static_files/index.html dest=/usr/share/nginx/html/ mode=0644
       notify:
-        - start nginx
+      - start nginx
   handlers:
     - name: start nginx
       service: name=nginx state=started
