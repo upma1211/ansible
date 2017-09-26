@@ -1,34 +1,44 @@
 ---
-- name: Configure webserver with nginx and tls
- hosts: nodes
- sudo: True
- vars:
- key_file: /etc/nginx/ssl/nginx.key
- cert_file: /etc/nginx/ssl/nginx.crt
- conf_file: /etc/nginx/sites-available/default
- server_name: localhost
- tasks:
- - name: Installs Nginx web server
+- name: Install nginx with tls
+  hosts: nodes
+  become: yes
+  vars:
+  key_file: /etc/nginx/ssl/nginx.key
+  cert_file: /etc/nginx/ssl/nginx.crt
+  conf_file: /etc/nginx/sites-available/default
+  server_name: localhost
+  tasks:
+    - name: Install Nginx web server
       apt: pkg=nginx state=latest update_cache=true
       notify:
-        - restart nginx
- - name: create directories for ssl certificates
- file: path=/etc/nginx/ssl state=directory
- - name: copy TLS key
- copy: src=files/nginx.key dest={{ key_file }} owner=root mode=0600
- notify: restart nginx
- - name: copy TLS certificate
- copy: src=files/nginx.crt dest={{ cert_file }}
- notify: restart nginx
- - name: copy nginx config file
- template: src=templates/nginx.conf.j2 dest={{ conf_file }}
- notify: restart nginx
- - name: enable configuration
- file: dest=/etc/nginx/sites-enabled/default src={{ conf_file }} state=link
- notify: restart nginx
- - name: copy index.html
- template: src=templates/index.html.j2 dest=/usr/share/nginx/html/index.html
- mode=0644
- handlers:
- - name: restart nginx
- service: name=nginx state=restarted
+        - start nginx
+    - name: create directories for ssl certificates
+      file: path=/etc/nginx/ssl state=directory
+	- name: copy TLS key
+	  copy: src=files/nginx.key dest={{ key_file }} owner=root mode=0600
+      notify: restart nginx
+    - name: copy TLS certificate
+      copy: src=files/nginx.crt dest={{ cert_file }}
+      notify: restart nginx
+	- name: copy nginx config file
+      template: src=templates/nginx.conf.j2 dest={{ conf_file }}
+      notify: restart nginx
+	- name: enable configuration
+      file: dest=/etc/nginx/sites-enabled/default src={{ conf_file }} state=link
+      notify: restart nginx
+    - name: Upload default index.php for host
+      copy: src=static_files/index.php dest=/usr/share/nginx/www/ mode=0644
+      register: php
+      ignore_errors: True
+
+    - name: Remove index.html for host
+      command: rm /usr/share/nginx/www/index.html
+      when: php|success
+
+    - name: Upload default index.html for host
+      copy: src=static_files/index.html dest=/usr/share/nginx/www/ mode=0644
+      when: php|failed
+
+  handlers:
+    - name: start Nginx
+      service: name=nginx state=started
